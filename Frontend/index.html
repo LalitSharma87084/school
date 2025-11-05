@@ -9,63 +9,119 @@
 
   <h2> Student Registration Form</h2>
   <form id="studentForm">
-    <label>Student Name:</label><br>
+    <label>Name:</label><br>
     <input type="text" id="name" required><br><br>
+
+    <label>Adhaar No:</label><br>
+    <input type="text" id="aadharNumber" required><br><br>
+
+    <label>Voter Card No:</label><br>
+    <input type="text" id="voterCardNumber" required><br><br>
+
+    <label>Bank Account No:</label><br>
+    <input type="text" id="bankAccountNumber" required><br><br>
+
+    <label>Bank Name:</label><br>
+    <input type="text" id="bankName" required><br><br>
+
+    <label>Bank IFSC code:</label><br>
+    <input type="text" id="bankIfsc" required><br><br>
+
+    <label>Organization Name:</label><br>
+    <input type="text" id="organizationName" required><br><br>
+
+    <label>Organization address:</label><br>
+    <input type="text" id="organizationAddress" required><br><br>
 
     <label>Email:</label><br>
     <input type="email" id="email" required><br><br>
 
-    <label>Course:</label><br>
-    <input type="text" id="course" required><br><br>
 
     <button type="submit">Submit</button>
   </form>
 
-  <p id="message" style="color: green; margin-top: 20px;"></p>
+  <p id="message" style="margin-top: 20px;"></p>
+  <p id="address" style="margin-top: 6px; color: #333;"></p>
 
 <script>
   const form = document.getElementById('studentForm');
   const message = document.getElementById('message');
+  const addressEl = document.getElementById('address');
+  const submitBtn = document.querySelector('#studentForm button[type="submit"]');
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    message.style.color = "#333";
+    message.textContent = "Submitting...";
+    addressEl.textContent = "";
+    submitBtn.disabled = true;
+
+    const name = document.getElementById('name').value;
+    const aadharNumber = document.getElementById('aadharNumber').value;
+    const voterCardNumber = document.getElementById('voterCardNumber').value;
+    const bankAccountNumber = document.getElementById('bankAccountNumber').value;
+    const bankName = document.getElementById('bankName').value;
+    const bankIfsc = document.getElementById('bankIfsc').value;
+    const organizationName = document.getElementById('organizationName').value;
+    const organizationAddress = document.getElementById('organizationAddress').value;
+    const email = document.getElementById('email').value;
+
+    const send = async (payload) => {
+      try {
+        const res = await fetch("http://127.0.0.1:5000/submit-form", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (res.ok) {
+          message.style.color = "green";
+          message.textContent = "✅ Form submitted successfully!";
+          addressEl.textContent = result.address ? `📍 ${result.address}` : "";
+          form.reset();
+        } else {
+          message.style.color = "crimson";
+          message.textContent = "Error: " + (result.message || "Server error");
+        }
+      } catch (err) {
+        message.style.color = "crimson";
+        message.textContent = "Network error. Please try again.";
+      } finally {
+        submitBtn.disabled = false;
+      }
+    };
+
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
+      message.style.color = "crimson";
+      message.textContent = "Geolocation is required but not supported by this browser.";
+      submitBtn.disabled = false;
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const latitude = position.coords.latitude;
-      const longitude = position.coords.longitude;
-
-      const data = {
-        name: document.getElementById('name').value,
-        email: document.getElementById('email').value,
-        course: document.getElementById('course').value,
-        latitude,
-        longitude
-      };
-
-      console.log("Sending data:", data);
-
-      const res = await fetch("http://127.0.0.1:5000/submit-form", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-
-      const result = await res.json();
-      if (res.ok) {
-        message.textContent = "✅ Form submitted successfully!";
-        form.reset();
-      } else {
-        message.textContent = " Error: " + result.message;
-      }
-
-    }, (error) => {
-      alert("Location access denied! Please allow permission to continue.");
-    });
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        await send({
+          name,
+          aadharNumber,
+          voterCardNumber,
+          bankAccountNumber,
+          bankName,
+          bankIfsc,
+          organizationName,
+          organizationAddress,
+          email,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      async () => {
+        message.style.color = "crimson";
+        message.textContent = "Location permission is required to submit the form.";
+        submitBtn.disabled = false;
+      },
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 10000 }
+    );
   });
 </script>
 
