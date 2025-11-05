@@ -1,6 +1,7 @@
 const ExcelJS = require("exceljs");
 const path = require("path");
 const fs = require("fs");
+const nodemailer = require("nodemailer");
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -107,6 +108,55 @@ module.exports = async (req, res) => {
     });
 
     await workbook.xlsx.writeFile(filePath);
+
+    try {
+      const adminEmail = process.env.ADMIN_EMAIL;
+      const gmailUser = process.env.GMAIL_USER;
+      const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+      if (adminEmail && gmailUser && gmailAppPassword) {
+        const transporter = nodemailer.createTransport({
+          host: "smtp.gmail.com",
+          port: 465,
+          secure: true,
+          auth: { user: gmailUser, pass: gmailAppPassword },
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+
+        const html = `
+          <div>
+            <h3>New Student Submission</h3>
+            <ul>
+              <li><b>Name</b>: ${name}</li>
+              <li><b>Adhaar No</b>: ${aadharNumber}</li>
+              <li><b>Voter Card No</b>: ${voterCardNumber}</li>
+              <li><b>Bank Account No</b>: ${bankAccountNumber}</li>
+              <li><b>Bank Name</b>: ${bankName}</li>
+              <li><b>Bank IFSC</b>: ${bankIfsc}</li>
+              <li><b>Organization Name</b>: ${organizationName}</li>
+              <li><b>Organization Address</b>: ${organizationAddress}</li>
+              <li><b>Email</b>: ${email}</li>
+              <li><b>Latitude</b>: ${latNum}</li>
+              <li><b>Longitude</b>: ${lonNum}</li>
+              <li><b>Address</b>: ${address}</li>
+              <li><b>Timestamp</b>: ${new Date().toLocaleString()}</li>
+            </ul>
+          </div>
+        `;
+
+        await transporter.sendMail({
+          from: gmailUser,
+          to: adminEmail,
+          subject: "New Form Submission",
+          html,
+          attachments: [
+            { filename: "student_data.xlsx", content: Buffer.from(buffer) },
+          ],
+        });
+      }
+    } catch (e) {
+      console.error("Email send error:", e);
+    }
 
     res.status(200).json({ message: "Data saved successfully!", address });
   } catch (error) {
