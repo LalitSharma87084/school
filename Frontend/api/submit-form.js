@@ -158,6 +158,39 @@ module.exports = async (req, res) => {
       console.error("Email send error:", e);
     }
 
+    // Persist a copy to Vercel Blob (private) so admin can view/download later
+    try {
+      const token = process.env.BLOB_READ_WRITE_TOKEN;
+      if (token) {
+        const { put } = await import("@vercel/blob");
+        const key = `submissions/${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}.json`;
+        const payload = {
+          name,
+          aadharNumber,
+          voterCardNumber,
+          bankAccountNumber,
+          bankName,
+          bankIfsc,
+          organizationName,
+          organizationAddress,
+          email,
+          latitude: latNum,
+          longitude: lonNum,
+          address,
+          timestamp: new Date().toISOString(),
+        };
+        await put(key, JSON.stringify(payload), {
+          access: "private",
+          token,
+          addRandomSuffix: false,
+        });
+      }
+    } catch (e) {
+      console.error("Blob store error:", e);
+    }
+
     res.status(200).json({ message: "Data saved successfully!", address });
   } catch (error) {
     console.error("Serverless error:", error);
