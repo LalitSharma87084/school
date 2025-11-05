@@ -4,18 +4,13 @@ module.exports = async (req, res) => {
     return;
   }
   try {
-    const token = process.env.BLOB_READ_WRITE_TOKEN;
-    if (!token) {
-      res.status(500).json({ message: "Blob token not configured" });
-      return;
-    }
     const { list, get } = await import("@vercel/blob");
-    const { blobs } = await list({ prefix: "submissions/", token });
+    const { blobs } = await list({ prefix: "submissions/" });
 
     const items = [];
     for (const b of blobs) {
       try {
-        const response = await get(b.url, { token });
+        const response = await get(b.url);
         const json = await response.json();
         items.push(json);
       } catch (e) {
